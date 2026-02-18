@@ -19,6 +19,11 @@ public class ComisionController {
         this.comisionService = comisionService;
     }
 
+    @GetMapping("/anios")
+    public List<Integer> obtenerAniosDisponibles() {
+        return comisionService.obtenerAniosDisponibles();
+    }
+
     @GetMapping("/anio/{anio}")
     public List<ComisionDTO> buscarPorAnio(@PathVariable Integer anio) {
         return comisionService.buscarPorAnio(anio);

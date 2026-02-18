@@ -1,5 +1,6 @@
 package ar.com.blschool.controller;
 
+import ar.com.blschool.dto.CursoDTO;
 import ar.com.blschool.entity.Curso;
 import ar.com.blschool.service.CursoService;
 import org.springframework.http.HttpStatus;
@@ -19,8 +20,13 @@ public class CursoController {
     }
 
     @GetMapping
-    public List<Curso> buscar(@RequestParam(required = false) String filtro) {
+    public List<CursoDTO> buscar(@RequestParam(required = false) String filtro) {
         return cursoService.buscar(filtro);
+    }
+
+    @GetMapping("/{id}")
+    public CursoDTO obtenerPorId(@PathVariable Long id) {
+        return cursoService.obtenerPorId(id);
     }
 
     @PostMapping

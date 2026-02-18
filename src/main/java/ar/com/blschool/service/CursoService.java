@@ -1,5 +1,7 @@
 package ar.com.blschool.service;
 
+import ar.com.blschool.dto.CursoDTO;
+import ar.com.blschool.entity.Comision;
 import ar.com.blschool.entity.Curso;
 import ar.com.blschool.repository.ComisionRepository;
 import ar.com.blschool.repository.CursoRepository;
@@ -51,10 +53,35 @@ public class CursoService extends BaseService {
     }
 
     @Transactional(readOnly = true)
-    public List<Curso> buscar(String filtro) {
+    public CursoDTO obtenerPorId(Long id) {
+        Curso curso = cursoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Curso no encontrado con id: " + id));
+        return toDTO(curso);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CursoDTO> buscar(String filtro) {
+        List<Curso> cursos;
         if (StringUtils.hasText(filtro)) {
-            return cursoRepository.findByFiltro(filtro.trim());
+            cursos = cursoRepository.findByFiltro(filtro.trim());
+        } else {
+            cursos = cursoRepository.findAll();
         }
-        return cursoRepository.findAll();
+        return cursos.stream().map(this::toDTO).toList();
+    }
+
+    private CursoDTO toDTO(Curso curso) {
+        CursoDTO dto = new CursoDTO();
+        dto.setCurId(curso.getCurId());
+        dto.setCurCodigo(curso.getCurCodigo());
+        dto.setCurNombre(curso.getCurNombre());
+        dto.setCurDescripcion(curso.getCurDescripcion());
+        dto.setComisionesActivas(
+                comisionRepository.findByCursoCurIdAndComActivaTrue(curso.getCurId())
+                        .stream()
+                        .map(Comision::getComNombre)
+                        .toList()
+        );
+        return dto;
     }
 }

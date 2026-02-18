@@ -174,6 +174,11 @@ public class ComisionService extends BaseService {
     }
 
     @Transactional(readOnly = true)
+    public List<Integer> obtenerAniosDisponibles() {
+        return comisionRepository.findDistinctAnios();
+    }
+
+    @Transactional(readOnly = true)
     public List<ComisionDTO> buscarPorAnio(Integer anio) {
         return comisionRepository.findByComAnio(anio).stream()
                 .map(this::toResponseDTO)
@@ -201,10 +206,10 @@ public class ComisionService extends BaseService {
         long preInscriptos = 0;
         if (comision.getInscripciones() != null) {
             inscriptos = comision.getInscripciones().stream()
-                    .filter(i -> "ACTIVO".equals(i.getInsEstado()))
+                    .filter(i -> "ACTIVA".equals(i.getInsEstado()))
                     .count();
             preInscriptos = comision.getInscripciones().stream()
-                    .filter(i -> "INACTIVO".equals(i.getInsEstado()))
+                    .filter(i -> "INACTIVA".equals(i.getInsEstado()))
                     .count();
         }
         dto.setInscriptos(inscriptos);

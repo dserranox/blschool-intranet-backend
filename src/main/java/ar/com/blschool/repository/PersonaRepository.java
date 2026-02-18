@@ -12,4 +12,8 @@ public interface PersonaRepository extends JpaRepository<Persona, Long> {
     @Query("SELECT DISTINCT p FROM Persona p JOIN Usuario u ON u.personaId = p.perId " +
            "JOIN u.roles r WHERE r.nombre IN :roles")
     List<Persona> findByRoles(@Param("roles") List<String> roles);
+
+    @Query("SELECT DISTINCT p FROM Persona p JOIN Usuario u ON u.personaId = p.perId " +
+           "JOIN u.roles r WHERE r.nombre IN :roles AND u.activo = true")
+    List<Persona> findByRolesAndActivo(@Param("roles") List<String> roles);
 }

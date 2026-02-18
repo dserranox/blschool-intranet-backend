@@ -12,4 +12,7 @@ public interface CursoRepository extends JpaRepository<Curso, Long> {
     @Query("SELECT c FROM Curso c WHERE LOWER(c.curCodigo) LIKE LOWER(CONCAT('%', :filtro, '%')) " +
            "OR LOWER(c.curNombre) LIKE LOWER(CONCAT('%', :filtro, '%'))")
     List<Curso> findByFiltro(@Param("filtro") String filtro);
+
+    @Query("SELECT COUNT(DISTINCT c) FROM Curso c JOIN c.comisiones com WHERE com.comActiva = true")
+    long countCursosConComisionActiva();
 }

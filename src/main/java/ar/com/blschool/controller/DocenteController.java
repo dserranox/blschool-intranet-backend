@@ -39,4 +39,16 @@ public class DocenteController {
     public DocenteDTO modificar(@PathVariable Long id, @RequestBody DocenteDTO dto) {
         return docenteService.modificar(id, dto);
     }
+
+    @PatchMapping("/{id}/activar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public void activar(@PathVariable Long id) {
+        docenteService.cambiarEstado(id, true);
+    }
+
+    @PatchMapping("/{id}/desactivar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public void desactivar(@PathVariable Long id) {
+        docenteService.cambiarEstado(id, false);
+    }
 }

@@ -1,7 +1,6 @@
 package ar.com.blschool.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,20 +10,15 @@ import java.util.List;
 @Getter
 @Setter
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class DocenteDTO {
+public class AlumnoDTO {
 
     private Long id;
-    private String nombres;
     private String apellidos;
+    private String nombres;
     private String dni;
     private LocalDate fechaNacimiento;
-    private String telefono;
-    private String direccion;
-    private String email;
-    private String usuario;
-    private String password;
-    private List<String> roles;
-    private Boolean activo;
-    private Long comisiones;
+    private String estado;
+    private String comision;
+    private String curso;
     private List<PersonaTelefonoDTO> telefonos;
 }

@@ -6,6 +6,7 @@ import ar.com.blschool.entity.Persona;
 import ar.com.blschool.entity.PersonaTelefono;
 import ar.com.blschool.entity.Rol;
 import ar.com.blschool.entity.Usuario;
+import ar.com.blschool.repository.ComisionClaseRepository;
 import ar.com.blschool.repository.PersonaRepository;
 import ar.com.blschool.repository.RolRepository;
 import ar.com.blschool.repository.UsuarioRepository;
@@ -24,15 +25,18 @@ public class DocenteService extends BaseService {
     private final PersonaRepository personaRepository;
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
+    private final ComisionClaseRepository comisionClaseRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DocenteService(PersonaRepository personaRepository,
                           UsuarioRepository usuarioRepository,
                           RolRepository rolRepository,
+                          ComisionClaseRepository comisionClaseRepository,
                           PasswordEncoder passwordEncoder) {
         this.personaRepository = personaRepository;
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
+        this.comisionClaseRepository = comisionClaseRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -49,6 +53,7 @@ public class DocenteService extends BaseService {
         persona.setPerNombres(dto.getNombres());
         persona.setPerApellido(dto.getApellidos());
         persona.setPerDni(dto.getDni());
+        persona.setPerFechaNacimiento(dto.getFechaNacimiento());
         persona.setPerEmail(dto.getEmail());
         persona.setPerDireccion(dto.getDireccion());
         auditar(persona, username);
@@ -69,15 +74,18 @@ public class DocenteService extends BaseService {
         personaRepository.save(persona);
 
         // 3. Crear Usuario con password encriptada
-        Rol rol = rolRepository.findByNombreIgnoreCase(dto.getRol())
-                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + dto.getRol()));
-
         Usuario usuario = new Usuario();
         usuario.setUsername(dto.getUsuario());
         usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
         usuario.setActivo(true);
         usuario.setPersonaId(persona.getPerId());
-        usuario.getRoles().add(rol);
+
+        for (String rolNombre : dto.getRoles()) {
+            Rol rol = rolRepository.findByNombreIgnoreCase(rolNombre)
+                    .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + rolNombre));
+            usuario.getRoles().add(rol);
+        }
+
         auditar(usuario, username);
 
         usuarioRepository.save(usuario);
@@ -96,16 +104,21 @@ public class DocenteService extends BaseService {
         List<String> roles = new ArrayList<>();
         roles.add("DOCENTE");
 
+        boolean esAdmin = false;
         Usuario usuarioLogueado = usuarioRepository.findByUsernameIgnoreCase(username).orElse(null);
         if (usuarioLogueado != null) {
-            boolean esAdmin = usuarioLogueado.getRoles().stream()
+            esAdmin = usuarioLogueado.getRoles().stream()
                     .anyMatch(r -> "ADMIN".equalsIgnoreCase(r.getNombre()));
             if (esAdmin) {
                 roles.add("ADMIN");
             }
         }
 
-        return personaRepository.findByRoles(roles).stream()
+        List<Persona> personas = esAdmin
+                ? personaRepository.findByRoles(roles)
+                : personaRepository.findByRolesAndActivo(roles);
+
+        return personas.stream()
                 .map(this::toListDTO)
                 .toList();
     }
@@ -126,7 +139,12 @@ public class DocenteService extends BaseService {
 
         // Usuario asociado
         usuarioRepository.findByPersonaId(personaId)
-                .ifPresent(u -> dto.setUsuario(u.getUsername()));
+                .ifPresent(u -> {
+                    dto.setUsuario(u.getUsername());
+                    dto.setRoles(u.getRoles().stream()
+                            .map(Rol::getNombre)
+                            .toList());
+                });
 
         return dto;
     }
@@ -154,6 +172,7 @@ public class DocenteService extends BaseService {
         persona.setPerNombres(dto.getNombres());
         persona.setPerApellido(dto.getApellidos());
         persona.setPerDni(dto.getDni());
+        persona.setPerFechaNacimiento(dto.getFechaNacimiento());
         persona.setPerEmail(dto.getEmail());
         persona.setPerDireccion(dto.getDireccion());
         auditar(persona, username);
@@ -203,11 +222,13 @@ public class DocenteService extends BaseService {
             usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
 
-        if (dto.getRol() != null) {
-            Rol rol = rolRepository.findByNombreIgnoreCase(dto.getRol())
-                    .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + dto.getRol()));
+        if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
             usuario.getRoles().clear();
-            usuario.getRoles().add(rol);
+            for (String rolNombre : dto.getRoles()) {
+                Rol rol = rolRepository.findByNombreIgnoreCase(rolNombre)
+                        .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + rolNombre));
+                usuario.getRoles().add(rol);
+            }
         }
 
         auditar(usuario, username);
@@ -225,6 +246,7 @@ public class DocenteService extends BaseService {
         dto.setNombres(persona.getPerNombres());
         dto.setApellidos(persona.getPerApellido());
         dto.setDni(persona.getPerDni());
+        dto.setFechaNacimiento(persona.getPerFechaNacimiento());
         dto.setDireccion(persona.getPerDireccion());
         dto.setEmail(persona.getPerEmail());
 
@@ -233,6 +255,25 @@ public class DocenteService extends BaseService {
             dto.setTelefono(persona.getPersonasTelefonos().getFirst().getPteNumero());
         }
 
+        // Estado del usuario asociado
+        usuarioRepository.findByPersonaId(persona.getPerId())
+                .ifPresent(u -> dto.setActivo(u.getActivo()));
+
+        // Cantidad de comisiones distintas
+        dto.setComisiones(comisionClaseRepository.countComisionesDistintasByDocenteId(persona.getPerId()));
+
         return dto;
+    }
+
+    @Transactional
+    public void cambiarEstado(Long personaId, boolean activo) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Usuario usuario = usuarioRepository.findByPersonaId(personaId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado para persona id: " + personaId));
+
+        usuario.setActivo(activo);
+        auditar(usuario, username);
+        usuarioRepository.save(usuario);
     }
 }
