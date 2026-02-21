@@ -17,7 +17,13 @@ public class AlumnoDTO {
     private String nombres;
     private String dni;
     private LocalDate fechaNacimiento;
+    private String email;
+    private String emailAlternativo;
+    private String direccion;
+    private String escuela;
+    private String gradoCurso;
     private String estado;
+    private Long comisionId;
     private String comision;
     private String curso;
     private List<PersonaTelefonoDTO> telefonos;

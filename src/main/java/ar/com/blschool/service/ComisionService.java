@@ -173,6 +173,74 @@ public class ComisionService extends BaseService {
         comisionRepository.save(comision);
     }
 
+    @Transactional
+    public void activar(Long id) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Comision comision = comisionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Comision no encontrada con id: " + id));
+
+        comision.setComActiva(true);
+        auditar(comision, username);
+        comisionRepository.save(comision);
+    }
+
+    @Transactional
+    public void duplicarPorAnio(Integer anioDesde, Integer anioHasta) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        List<Comision> comisiones = comisionRepository.findByComAnio(anioDesde).stream()
+                .filter(Comision::getComActiva)
+                .toList();
+
+        for (Comision original : comisiones) {
+            Comision nueva = new Comision();
+            nueva.setCurso(original.getCurso());
+            nueva.setComAnio(anioHasta);
+            nueva.setComNombre(original.getComNombre());
+            nueva.setComCupo(original.getComCupo());
+            nueva.setComActiva(true);
+            auditar(nueva, username);
+
+            List<ComisionClase> clases = new ArrayList<>();
+            if (original.getComisionesClases() != null) {
+                for (ComisionClase originalClase : original.getComisionesClases()) {
+                    ComisionClase nuevaClase = new ComisionClase();
+                    nuevaClase.setComision(nueva);
+                    nuevaClase.setClcDiaSemana(originalClase.getClcDiaSemana());
+                    nuevaClase.setClcHoraDesde(originalClase.getClcHoraDesde());
+                    nuevaClase.setClcHoraHasta(originalClase.getClcHoraHasta());
+                    nuevaClase.setDocente(originalClase.getDocente());
+                    nuevaClase.setDocenteSuplente(originalClase.getDocenteSuplente());
+                    auditar(nuevaClase, username);
+                    clases.add(nuevaClase);
+                }
+            }
+            nueva.setComisionesClases(clases);
+            comisionRepository.save(nueva);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public ComisionDTO obtenerPorId(Long id) {
+        Comision comision = comisionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Comisión no encontrada con id: " + id));
+        return toResponseDTO(comision);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ComisionDTO> listarActivas() {
+        return comisionRepository.findAllActivas().stream()
+                .map(c -> {
+                    ComisionDTO dto = new ComisionDTO();
+                    dto.setComId(c.getComId());
+                    dto.setNombre(c.getComNombre());
+                    dto.setCursoNombre(c.getCurso().getCurNombre());
+                    return dto;
+                })
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public List<Integer> obtenerAniosDisponibles() {
         return comisionRepository.findDistinctAnios();

@@ -9,6 +9,6 @@ import java.util.List;
 
 public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> {
 
-    @Query("SELECT i FROM Inscripcion i JOIN FETCH i.comision c JOIN FETCH c.curso WHERE i.alumno.aluId = :alumnoId ORDER BY i.insId DESC ")
+    @Query("SELECT i FROM Inscripcion i JOIN FETCH i.comision c JOIN FETCH c.curso WHERE i.alumno.aluId = :alumnoId AND c.comActiva = true ORDER BY i.insId DESC ")
     List<Inscripcion> findActivasByAlumnoId(@Param("alumnoId") Long alumnoId);
 }

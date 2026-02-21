@@ -30,12 +30,24 @@ public class ComisionClaseDTO {
     @JsonProperty("docente_suplente")
     private Long docenteSuplente;
 
+    @JsonProperty("docente_nombre")
+    private String docenteNombre;
+
+    @JsonProperty("docente_suplente_nombre")
+    private String docenteSuplenteNombre;
+
     public ComisionClaseDTO(ComisionClase comisionClase) {
         this.id = comisionClase.getClcId();
         this.dia = comisionClase.getClcDiaSemana();
         this.horaDesde = comisionClase.getClcHoraDesde();
         this.horaHasta = comisionClase.getClcHoraHasta();
-        this.docente = comisionClase.getDocente() != null ? comisionClase.getDocente().getPerId() : null;
-        this.docenteSuplente = comisionClase.getDocenteSuplente() != null ? comisionClase.getDocenteSuplente().getPerId() : null;
+        if (comisionClase.getDocente() != null) {
+            this.docente = comisionClase.getDocente().getPerId();
+            this.docenteNombre = comisionClase.getDocente().getPerApellido() + ", " + comisionClase.getDocente().getPerNombres();
+        }
+        if (comisionClase.getDocenteSuplente() != null) {
+            this.docenteSuplente = comisionClase.getDocenteSuplente().getPerId();
+            this.docenteSuplenteNombre = comisionClase.getDocenteSuplente().getPerApellido() + ", " + comisionClase.getDocenteSuplente().getPerNombres();
+        }
     }
 }

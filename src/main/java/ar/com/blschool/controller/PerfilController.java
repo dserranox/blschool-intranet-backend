@@ -61,7 +61,7 @@ public class PerfilController {
     @GetMapping("/dashboard")
     public DashboardDTO obtenerDashboard() {
         DashboardDTO dto = new DashboardDTO();
-        dto.setAlumnosActivos(alumnoRepository.countByAluEstado("ACTIVO"));
+        dto.setAlumnosActivos(alumnoRepository.countByAluEstado("INSCRIPTO"));
         dto.setDocentesActivos(usuarioRepository.countActivosByRol("DOCENTE"));
         dto.setCursosActivos(cursoRepository.countCursosConComisionActiva());
         dto.setComisionesActivas(comisionRepository.countByComActivaTrue());

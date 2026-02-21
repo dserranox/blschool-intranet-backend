@@ -19,6 +19,16 @@ public class ComisionController {
         this.comisionService = comisionService;
     }
 
+    @GetMapping("/{id}")
+    public ComisionDTO obtenerPorId(@PathVariable Long id) {
+        return comisionService.obtenerPorId(id);
+    }
+
+    @GetMapping("/activas")
+    public List<ComisionDTO> listarActivas() {
+        return comisionService.listarActivas();
+    }
+
     @GetMapping("/anios")
     public List<Integer> obtenerAniosDisponibles() {
         return comisionService.obtenerAniosDisponibles();
@@ -47,10 +57,24 @@ public class ComisionController {
         return comisionService.modificar(id, dto);
     }
 
+    @PatchMapping("/{id}/activar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
+    public void activar(@PathVariable Long id) {
+        comisionService.activar(id);
+    }
+
     @PatchMapping("/{id}/desactivar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMIN')")
     public void desactivar(@PathVariable Long id) {
         comisionService.desactivar(id);
+    }
+
+    @PostMapping("/duplicar")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
+    public void duplicar(@RequestParam Integer anioDesde, @RequestParam Integer anioHasta) {
+        comisionService.duplicarPorAnio(anioDesde, anioHasta);
     }
 }
