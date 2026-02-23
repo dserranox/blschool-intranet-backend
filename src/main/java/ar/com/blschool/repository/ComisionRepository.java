@@ -10,7 +10,7 @@ public interface ComisionRepository extends JpaRepository<Comision, Long> {
 
     boolean existsByCursoCurId(Long cursoId);
 
-    List<Comision> findByComAnio(Integer anio);
+    List<Comision> findByComAnioOrderByCursoCurNombreAscComNombreAsc(Integer anio);
 
     List<Comision> findByCursoCurId(Long cursoId);
 

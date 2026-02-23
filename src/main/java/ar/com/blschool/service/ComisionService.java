@@ -189,7 +189,7 @@ public class ComisionService extends BaseService {
     public void duplicarPorAnio(Integer anioDesde, Integer anioHasta) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        List<Comision> comisiones = comisionRepository.findByComAnio(anioDesde).stream()
+        List<Comision> comisiones = comisionRepository.findByComAnioOrderByCursoCurNombreAscComNombreAsc(anioDesde).stream()
                 .filter(Comision::getComActiva)
                 .toList();
 
@@ -248,7 +248,7 @@ public class ComisionService extends BaseService {
 
     @Transactional(readOnly = true)
     public List<ComisionDTO> buscarPorAnio(Integer anio) {
-        return comisionRepository.findByComAnio(anio).stream()
+        return comisionRepository.findByComAnioOrderByCursoCurNombreAscComNombreAsc(anio).stream()
                 .map(this::toResponseDTO)
                 .toList();
     }
