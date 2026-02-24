@@ -37,6 +37,9 @@ public class Alumno implements IAuditable{
     @Column(name = "alu_estado", length = 100)
     private String aluEstado;
 
+    @Column(name = "alu_problema_salud", length = 500)
+    private String aluProblemaSalud;
+
     @Column(name = "AUD_USR_INS", nullable = false, length = 250)
     private String audUsrIns;
     @Column(name = "AUD_USR_UPD", nullable = false, length = 250)

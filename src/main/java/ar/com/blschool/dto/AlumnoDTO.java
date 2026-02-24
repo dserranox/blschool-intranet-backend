@@ -23,6 +23,7 @@ public class AlumnoDTO {
     private String escuela;
     private String gradoCurso;
     private String estado;
+    private String problemaSalud;
     private Long comisionId;
     private String comision;
     private String curso;

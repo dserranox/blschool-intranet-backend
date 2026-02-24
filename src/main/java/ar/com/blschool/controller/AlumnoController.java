@@ -28,6 +28,11 @@ public class AlumnoController {
         return alumnoService.obtenerPorId(id);
     }
 
+    @GetMapping("/comision/{comisionId}")
+    public List<AlumnoDTO> listarPorComision(@PathVariable Long comisionId) {
+        return alumnoService.listarPorComision(comisionId);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")

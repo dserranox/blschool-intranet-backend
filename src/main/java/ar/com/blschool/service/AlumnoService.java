@@ -59,6 +59,16 @@ public class AlumnoService extends BaseService {
         return toDTO(alumno);
     }
 
+    @Transactional(readOnly = true)
+    public List<AlumnoDTO> listarPorComision(Long comisionId) {
+        return inscripcionRepository.findByComisionId(comisionId).stream()
+                .map(inscripcion -> {
+                    AlumnoDTO dto = toDTO(inscripcion.getAlumno());
+                    return dto;
+                })
+                .toList();
+    }
+
     @Transactional
     public AlumnoDTO crear(AlumnoDTO dto) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -82,6 +92,7 @@ public class AlumnoService extends BaseService {
         alumno.setAluGradoCurso(dto.getGradoCurso());
         alumno.setAluEmailAlternativo(dto.getEmailAlternativo());
         alumno.setAluEstado(dto.getEstado() != null ? dto.getEstado() : ALUMNO_INSCRIPTO);
+        alumno.setAluProblemaSalud(dto.getProblemaSalud());
         auditar(alumno, username);
         alumnoRepository.save(alumno);
 
@@ -120,6 +131,7 @@ public class AlumnoService extends BaseService {
         if (dto.getEstado() != null) {
             alumno.setAluEstado(dto.getEstado());
         }
+        alumno.setAluProblemaSalud(dto.getProblemaSalud());
         auditar(alumno, username);
         alumnoRepository.save(alumno);
 
@@ -247,6 +259,7 @@ public class AlumnoService extends BaseService {
         dto.setEscuela(alumno.getAluEscuela());
         dto.setGradoCurso(alumno.getAluGradoCurso());
         dto.setEstado(alumno.getAluEstado());
+        dto.setProblemaSalud(alumno.getAluProblemaSalud());
 
         if (persona.getPersonasTelefonos() != null) {
             dto.setTelefonos(persona.getPersonasTelefonos().stream()
