@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>ar.com.blschool</groupId>
 	<artifactId>blschool-intranet-backend</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.1</version>
 	<name>blschool-intranet-backend</name>
 	<description>Proyecto backend BLSchool</description>
 	<url/>
