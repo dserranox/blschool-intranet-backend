@@ -213,11 +213,12 @@ public class AlumnoService extends BaseService {
     }
 
     private void guardarInscripcion(Alumno alumno, Long comisionId, String username) {
+        List<Inscripcion> inscripcionesActivas = inscripcionRepository.findActivasByAlumnoId(alumno.getAluId());
+
         if (comisionId == null) {
+            inscripcionesActivas.forEach(inscripcionRepository::delete);
             return;
         }
-
-        List<Inscripcion> inscripcionesActivas = inscripcionRepository.findActivasByAlumnoId(alumno.getAluId());
 
         if (!inscripcionesActivas.isEmpty()) {
             Inscripcion inscripcionExistente = inscripcionesActivas.getFirst();
