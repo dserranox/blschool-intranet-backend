@@ -5,6 +5,7 @@ import ar.com.blschool.entity.Comision;
 import ar.com.blschool.entity.Curso;
 import ar.com.blschool.repository.ComisionRepository;
 import ar.com.blschool.repository.CursoRepository;
+import ar.com.blschool.repository.InscripcionRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,10 +18,12 @@ public class CursoService extends BaseService {
 
     private final CursoRepository cursoRepository;
     private final ComisionRepository comisionRepository;
+    private final InscripcionRepository inscripcionRepository;
 
-    public CursoService(CursoRepository cursoRepository, ComisionRepository comisionRepository) {
+    public CursoService(CursoRepository cursoRepository, ComisionRepository comisionRepository, InscripcionRepository inscripcionRepository) {
         this.cursoRepository = cursoRepository;
         this.comisionRepository = comisionRepository;
+        this.inscripcionRepository = inscripcionRepository;
     }
 
     @Transactional
@@ -82,6 +85,7 @@ public class CursoService extends BaseService {
                         .map(Comision::getComNombre)
                         .toList()
         );
+        dto.setCantInscriptos(inscripcionRepository.countActivasByCursoId(curso.getCurId()));
         return dto;
     }
 }

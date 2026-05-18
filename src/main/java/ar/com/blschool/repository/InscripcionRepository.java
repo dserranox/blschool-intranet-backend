@@ -14,4 +14,7 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, Long> 
 
     @Query("SELECT i FROM Inscripcion i JOIN FETCH i.alumno a JOIN FETCH a.persona p LEFT JOIN FETCH p.personasTelefonos WHERE i.comision.comId = :comisionId ORDER BY p.perApellido, p.perNombres")
     List<Inscripcion> findByComisionId(@Param("comisionId") Long comisionId);
+
+    @Query("SELECT COUNT(i) FROM Inscripcion i WHERE i.comision.curso.curId = :cursoId AND i.insEstado = 'ACTIVA'")
+    long countActivasByCursoId(@Param("cursoId") Long cursoId);
 }

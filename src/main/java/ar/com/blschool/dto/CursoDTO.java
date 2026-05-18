@@ -16,4 +16,5 @@ public class CursoDTO {
     private String curNombre;
     private String curDescripcion;
     private List<String> comisionesActivas;
+    private Long cantInscriptos;
 }
