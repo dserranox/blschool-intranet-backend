@@ -6,8 +6,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PersonaRepository extends JpaRepository<Persona, Long> {
+
+    Optional<Persona> findByPerDni(String dni);
 
     @Query("SELECT DISTINCT p FROM Persona p JOIN Usuario u ON u.personaId = p.perId " +
            "JOIN u.roles r WHERE r.nombre IN :roles")

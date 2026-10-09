@@ -18,7 +18,7 @@ public interface ComisionRepository extends JpaRepository<Comision, Long> {
 
     long countByComActivaTrue();
 
-    @Query("SELECT c FROM Comision c JOIN FETCH c.curso WHERE c.comActiva = true ORDER BY c.curso.curNombre, c.comNombre")
+    @Query("SELECT c FROM Comision c JOIN FETCH c.curso WHERE c.comActiva = true ORDER BY c.comAnio, c.curso.curNombre, c.comNombre")
     List<Comision> findAllActivas();
 
     @Query("SELECT DISTINCT c.comAnio FROM Comision c ORDER BY c.comAnio")

@@ -26,6 +26,7 @@ public class AlumnoDTO {
     private String problemaSalud;
     private Long comisionId;
     private String comision;
+    private Integer comisionAnio;
     private String curso;
     private List<PersonaTelefonoDTO> telefonos;
 }

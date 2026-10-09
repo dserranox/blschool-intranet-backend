@@ -1,23 +1,28 @@
 package ar.com.blschool.service;
 
 import ar.com.blschool.dto.AlumnoDTO;
+import ar.com.blschool.dto.InscripcionHistorialDTO;
 import ar.com.blschool.dto.PersonaTelefonoDTO;
 import ar.com.blschool.entity.Alumno;
 import ar.com.blschool.entity.Inscripcion;
 import ar.com.blschool.entity.Persona;
 import ar.com.blschool.entity.PersonaTelefono;
 import ar.com.blschool.entity.Comision;
+import ar.com.blschool.entity.Preinscripcion;
 import ar.com.blschool.repository.AlumnoRepository;
 import ar.com.blschool.repository.ComisionRepository;
 import ar.com.blschool.repository.InscripcionRepository;
 import ar.com.blschool.repository.PersonaRepository;
+import ar.com.blschool.repository.PreinscripcionRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -29,16 +34,19 @@ public class AlumnoService extends BaseService {
     private final PersonaRepository personaRepository;
     private final InscripcionRepository inscripcionRepository;
     private final ComisionRepository comisionRepository;
+    private final PreinscripcionRepository preinscripcionRepository;
 
     private final String ALUMNO_INSCRIPTO = "INSCRIPTO";
     public AlumnoService(AlumnoRepository alumnoRepository,
                          PersonaRepository personaRepository,
                          InscripcionRepository inscripcionRepository,
-                         ComisionRepository comisionRepository) {
+                         ComisionRepository comisionRepository,
+                         PreinscripcionRepository preinscripcionRepository) {
         this.alumnoRepository = alumnoRepository;
         this.personaRepository = personaRepository;
         this.inscripcionRepository = inscripcionRepository;
         this.comisionRepository = comisionRepository;
+        this.preinscripcionRepository = preinscripcionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -212,30 +220,47 @@ public class AlumnoService extends BaseService {
         personaRepository.save(persona);
     }
 
+    /**
+     * Las inscripciones son por año: elegir una comisión sólo reemplaza la inscripción del MISMO año
+     * de esa comisión. Las de otros años (historial, o la del año siguiente) no se tocan.
+     */
     private void guardarInscripcion(Alumno alumno, Long comisionId, String username) {
         List<Inscripcion> inscripcionesActivas = inscripcionRepository.findActivasByAlumnoId(alumno.getAluId());
 
         if (comisionId == null) {
-            inscripcionesActivas.forEach(inscripcionRepository::delete);
+            // "Sin comisión": se quita sólo la inscripción que muestra el formulario
+            Inscripcion vigente = inscripcionVigente(inscripcionesActivas);
+            if (vigente != null) {
+                preinscripcionRepository.findByInscripcionInsId(vigente.getInsId()).forEach(p -> {
+                    p.setInscripcion(null);
+                    p.setComision(null);
+                    p.setPreEstado(Preinscripcion.PENDIENTE);
+                    auditar(p, username);
+                    preinscripcionRepository.save(p);
+                });
+                inscripcionRepository.delete(vigente);
+            }
             return;
         }
 
-        if (!inscripcionesActivas.isEmpty()) {
-            Inscripcion inscripcionExistente = inscripcionesActivas.getFirst();
-            // Si la comisión es la misma, no hace nada
+        Comision comision = comisionRepository.findById(comisionId)
+                .orElseThrow(() -> new RuntimeException("Comisión no encontrada con id: " + comisionId));
+
+        Inscripcion inscripcionExistente = inscripcionesActivas.stream()
+                .filter(i -> i.getComision().getComAnio().equals(comision.getComAnio()))
+                .findFirst()
+                .orElse(null);
+
+        if (inscripcionExistente != null) {
             if (!inscripcionExistente.getComision().getComId().equals(comisionId)) {
-                // Actualizar la inscripción existente con la nueva comisión
-                Comision nuevaComision = comisionRepository.findById(comisionId)
-                        .orElseThrow(() -> new RuntimeException("Comisión no encontrada con id: " + comisionId));
-                inscripcionExistente.setComision(nuevaComision);
+                // Cambio de comisión dentro del mismo año
+                inscripcionExistente.setComision(comision);
+                inscripcionExistente.setInsFecha(LocalDateTime.now());
             }
-            inscripcionExistente.setInsFecha(LocalDateTime.now());
             inscripcionExistente.setInsEstado(alumno.getAluEstado().equals(ALUMNO_INSCRIPTO) ? "ACTIVA" : "INACTIVA");
             inscripcionRepository.save(inscripcionExistente);
         } else {
-            // Crear nueva inscripción
-            Comision comision = comisionRepository.findById(comisionId)
-                    .orElseThrow(() -> new RuntimeException("Comisión no encontrada con id: " + comisionId));
+            // Crear nueva inscripción (otro año, o el alumno no tenía)
             Inscripcion inscripcion = new Inscripcion();
             inscripcion.setAlumno(alumno);
             inscripcion.setComision(comision);
@@ -270,14 +295,46 @@ public class AlumnoService extends BaseService {
             dto.setTelefonos(Collections.emptyList());
         }
 
-        List<Inscripcion> inscripcionesActivas = inscripcionRepository.findActivasByAlumnoId(alumno.getAluId());
-        if (!inscripcionesActivas.isEmpty()) {
-            Inscripcion inscripcion = inscripcionesActivas.getFirst();
+        Inscripcion inscripcion = inscripcionVigente(inscripcionRepository.findActivasByAlumnoId(alumno.getAluId()));
+        if (inscripcion != null) {
             dto.setComisionId(inscripcion.getComision().getComId());
             dto.setComision(inscripcion.getComision().getComNombre());
+            dto.setComisionAnio(inscripcion.getComision().getComAnio());
             dto.setCurso(inscripcion.getComision().getCurso().getCurNombre());
         }
 
         return dto;
+    }
+
+    /**
+     * Inscripción a mostrar como "la comisión del alumno": la del año en curso si existe;
+     * si no, la del año más reciente (p. ej. un alumno nuevo que sólo tiene la del año siguiente).
+     */
+    private Inscripcion inscripcionVigente(List<Inscripcion> inscripcionesActivas) {
+        int anioActual = LocalDate.now().getYear();
+        return inscripcionesActivas.stream()
+                .filter(i -> i.getComision().getComAnio() == anioActual)
+                .findFirst()
+                .or(() -> inscripcionesActivas.stream()
+                        .max(Comparator.comparing((Inscripcion i) -> i.getComision().getComAnio())
+                                .thenComparing(Inscripcion::getInsId)))
+                .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InscripcionHistorialDTO> historialInscripciones(Long alumnoId) {
+        return inscripcionRepository.findHistorialByAlumnoId(alumnoId).stream()
+                .map(i -> {
+                    InscripcionHistorialDTO dto = new InscripcionHistorialDTO();
+                    dto.setId(i.getInsId());
+                    dto.setAnio(i.getComision().getComAnio());
+                    dto.setComisionId(i.getComision().getComId());
+                    dto.setComision(i.getComision().getComNombre());
+                    dto.setCurso(i.getComision().getCurso().getCurNombre());
+                    dto.setEstado(i.getInsEstado());
+                    dto.setFecha(i.getInsFecha());
+                    return dto;
+                })
+                .toList();
     }
 }

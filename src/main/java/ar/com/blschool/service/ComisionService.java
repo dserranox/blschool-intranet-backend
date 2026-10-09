@@ -234,6 +234,7 @@ public class ComisionService extends BaseService {
                 .map(c -> {
                     ComisionDTO dto = new ComisionDTO();
                     dto.setComId(c.getComId());
+                    dto.setAnio(c.getComAnio());
                     dto.setNombre(c.getComNombre());
                     dto.setCursoNombre(c.getCurso().getCurNombre());
                     return dto;

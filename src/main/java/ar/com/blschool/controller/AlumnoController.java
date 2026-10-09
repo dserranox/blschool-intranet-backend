@@ -1,7 +1,9 @@
 package ar.com.blschool.controller;
 
 import ar.com.blschool.dto.AlumnoDTO;
+import ar.com.blschool.dto.AlumnoHistorialDTO;
 import ar.com.blschool.service.AlumnoService;
+import ar.com.blschool.service.PreinscripcionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -13,9 +15,19 @@ import java.util.List;
 public class AlumnoController {
 
     private final AlumnoService alumnoService;
+    private final PreinscripcionService preinscripcionService;
 
-    public AlumnoController(AlumnoService alumnoService) {
+    public AlumnoController(AlumnoService alumnoService, PreinscripcionService preinscripcionService) {
         this.alumnoService = alumnoService;
+        this.preinscripcionService = preinscripcionService;
+    }
+
+    /** Todas las inscripciones (todos los años y estados) y preinscripciones del alumno. */
+    @GetMapping("/{id}/historial")
+    public AlumnoHistorialDTO historial(@PathVariable Long id) {
+        return new AlumnoHistorialDTO(
+                alumnoService.historialInscripciones(id),
+                preinscripcionService.listarPorAlumno(id));
     }
 
     @GetMapping

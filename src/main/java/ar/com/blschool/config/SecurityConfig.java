@@ -4,6 +4,7 @@ import ar.com.dserrano.common.security.jwt.JwtAuthenticationFilter;
 import ar.com.dserrano.common.security.jwt.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -21,6 +22,8 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(reg -> reg
                 .requestMatchers("/error").permitAll()
+                // Google Form -> Apps Script: se valida con X-Api-Key en el controller
+                .requestMatchers(HttpMethod.POST, "/public/preinscripciones").permitAll()
                 .anyRequest().authenticated()
             );
         http.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
