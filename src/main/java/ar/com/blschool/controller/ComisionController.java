@@ -71,6 +71,26 @@ public class ComisionController {
         comisionService.desactivar(id);
     }
 
+    /** Devuelve la cantidad de comisiones que cambiaron de estado. */
+    @PatchMapping("/anio/{anio}/activar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public int activarPorAnio(@PathVariable Integer anio) {
+        return comisionService.cambiarEstadoPorAnio(anio, true);
+    }
+
+    @PatchMapping("/anio/{anio}/desactivar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public int desactivarPorAnio(@PathVariable Integer anio) {
+        return comisionService.cambiarEstadoPorAnio(anio, false);
+    }
+
+    /** Elimina todas las comisiones del año (409 si alguna tiene inscripciones). Devuelve cuántas se eliminaron. */
+    @DeleteMapping("/anio/{anio}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public int eliminarPorAnio(@PathVariable Integer anio) {
+        return comisionService.eliminarPorAnio(anio);
+    }
+
     @PostMapping("/duplicar")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")

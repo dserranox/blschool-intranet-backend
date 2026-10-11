@@ -8,7 +8,10 @@ import ar.com.blschool.entity.Curso;
 import ar.com.blschool.entity.Persona;
 import ar.com.blschool.repository.ComisionRepository;
 import ar.com.blschool.repository.CursoRepository;
+import ar.com.blschool.repository.InscripcionRepository;
 import ar.com.blschool.repository.PersonaRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,13 +28,16 @@ public class ComisionService extends BaseService {
     private final ComisionRepository comisionRepository;
     private final CursoRepository cursoRepository;
     private final PersonaRepository personaRepository;
+    private final InscripcionRepository inscripcionRepository;
 
     public ComisionService(ComisionRepository comisionRepository,
                            CursoRepository cursoRepository,
-                           PersonaRepository personaRepository) {
+                           PersonaRepository personaRepository,
+                           InscripcionRepository inscripcionRepository) {
         this.comisionRepository = comisionRepository;
         this.cursoRepository = cursoRepository;
         this.personaRepository = personaRepository;
+        this.inscripcionRepository = inscripcionRepository;
     }
 
     @Transactional
@@ -183,6 +189,39 @@ public class ComisionService extends BaseService {
         comision.setComActiva(true);
         auditar(comision, username);
         comisionRepository.save(comision);
+    }
+
+    /** Activa o desactiva todas las comisiones de un año. Devuelve cuántas cambiaron. */
+    @Transactional
+    public int cambiarEstadoPorAnio(Integer anio, boolean activa) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        List<Comision> aCambiar = comisionRepository.findByComAnioOrderByCursoCurNombreAscComNombreAsc(anio).stream()
+                .filter(c -> c.getComActiva() != activa)
+                .toList();
+        for (Comision comision : aCambiar) {
+            comision.setComActiva(activa);
+            auditar(comision, username);
+        }
+        comisionRepository.saveAll(aCambiar);
+        return aCambiar.size();
+    }
+
+    /**
+     * Elimina físicamente todas las comisiones de un año (con sus clases).
+     * Sólo se permite si ninguna tiene inscripciones, para no perder historial.
+     */
+    @Transactional
+    public int eliminarPorAnio(Integer anio) {
+        long inscripciones = inscripcionRepository.countByComisionComAnio(anio);
+        if (inscripciones > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se pueden eliminar las comisiones de " + anio + ": tienen " + inscripciones +
+                    " inscripciones. Podés darlas de baja en su lugar.");
+        }
+        List<Comision> comisiones = comisionRepository.findByComAnioOrderByCursoCurNombreAscComNombreAsc(anio);
+        comisionRepository.deleteAll(comisiones);
+        return comisiones.size();
     }
 
     @Transactional
