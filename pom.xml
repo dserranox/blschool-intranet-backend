@@ -46,6 +46,12 @@
 			<version>0.0.1</version>
 		</dependency>
 
+		<!-- Auditoría de cambios (tablas *_AUD + REVISIONES) -->
+		<dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-envers</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>

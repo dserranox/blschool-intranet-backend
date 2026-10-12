@@ -6,6 +6,7 @@ import ar.com.blschool.entity.Comision;
 import ar.com.blschool.entity.ComisionClase;
 import ar.com.blschool.entity.Curso;
 import ar.com.blschool.entity.Persona;
+import ar.com.blschool.repository.CalificacionRepository;
 import ar.com.blschool.repository.ComisionRepository;
 import ar.com.blschool.repository.CursoRepository;
 import ar.com.blschool.repository.InscripcionRepository;
@@ -29,11 +30,14 @@ public class ComisionService extends BaseService {
     private final CursoRepository cursoRepository;
     private final PersonaRepository personaRepository;
     private final InscripcionRepository inscripcionRepository;
+    private final CalificacionRepository calificacionRepository;
 
     public ComisionService(ComisionRepository comisionRepository,
                            CursoRepository cursoRepository,
                            PersonaRepository personaRepository,
-                           InscripcionRepository inscripcionRepository) {
+                           InscripcionRepository inscripcionRepository,
+                           CalificacionRepository calificacionRepository) {
+        this.calificacionRepository = calificacionRepository;
         this.comisionRepository = comisionRepository;
         this.cursoRepository = cursoRepository;
         this.personaRepository = personaRepository;
@@ -218,6 +222,12 @@ public class ComisionService extends BaseService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "No se pueden eliminar las comisiones de " + anio + ": tienen " + inscripciones +
                     " inscripciones. Podés darlas de baja en su lugar.");
+        }
+        long calificaciones = calificacionRepository.countByEvaluacionComisionComAnio(anio);
+        if (calificaciones > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se pueden eliminar las comisiones de " + anio + ": tienen " + calificaciones +
+                    " calificaciones cargadas. Podés darlas de baja en su lugar.");
         }
         List<Comision> comisiones = comisionRepository.findByComAnioOrderByCursoCurNombreAscComNombreAsc(anio);
         comisionRepository.deleteAll(comisiones);

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -70,7 +71,10 @@ public class CursoService extends BaseService {
         } else {
             cursos = cursoRepository.findAll();
         }
-        return cursos.stream().map(this::toDTO).toList();
+        return cursos.stream()
+                .sorted(Comparator.comparing(Curso::getCurNombre, String.CASE_INSENSITIVE_ORDER))
+                .map(this::toDTO)
+                .toList();
     }
 
     private CursoDTO toDTO(Curso curso) {

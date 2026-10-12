@@ -5,11 +5,14 @@ import ar.com.blschool.dto.PreinscripcionResultadoDTO;
 import ar.com.blschool.service.PreinscripcionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.List;
 
 /**
  * Endpoint llamado por el Apps Script del Google Form de inscripciones.
@@ -19,6 +22,9 @@ import java.security.MessageDigest;
 @RestController
 @RequestMapping("/public/preinscripciones")
 public class PreinscripcionPublicController {
+
+    /** Usuario con el que quedan registrados los cambios hechos desde el formulario (revisiones de Envers). */
+    private static final String USUARIO_FORMULARIO = "GOOGLE_FORM";
 
     private final PreinscripcionService preinscripcionService;
     private final String apiKey;
@@ -33,6 +39,9 @@ public class PreinscripcionPublicController {
     public PreinscripcionResultadoDTO recibir(@RequestHeader(value = "X-Api-Key", required = false) String apiKeyRecibida,
                                               @RequestBody PreinscripcionFormDTO form) {
         validarApiKey(apiKeyRecibida);
+        // Sin JWT no hay usuario: se identifica la request como el formulario (dura sólo esta request)
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(USUARIO_FORMULARIO, null, List.of()));
         return preinscripcionService.procesarFormulario(form);
     }
 

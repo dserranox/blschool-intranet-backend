@@ -1,6 +1,8 @@
 package ar.com.blschool.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,6 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Audited
 @Table(name = "personas_telefonos")
 public class PersonaTelefono implements IAuditable {
 
@@ -37,12 +40,17 @@ public class PersonaTelefono implements IAuditable {
     @Column(name = "pte_principal", nullable = false)
     private Boolean ptePrincipal;
 
+    // Los campos de auditoría propios no se versionan: guardar sin cambios reales no genera revisión
+    @NotAudited
     @Column(name = "AUD_USR_INS", nullable = false, length = 250)
     private String audUsrIns;
+    @NotAudited
     @Column(name = "AUD_USR_UPD", nullable = false, length = 250)
     private String audUsrUpd;
+    @NotAudited
     @Column(name = "AUD_FECHA_INS", nullable = false, length = 7)
     private LocalDateTime audFechaIns;
+    @NotAudited
     @Column(name = "AUD_FECHA_UPD", nullable = false, length = 7)
     private LocalDateTime audFechaUpd;
 }

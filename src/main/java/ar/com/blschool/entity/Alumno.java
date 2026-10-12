@@ -1,6 +1,8 @@
 package ar.com.blschool.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,6 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Audited
 @Table(name = "alumnos")
 public class Alumno implements IAuditable{
 
@@ -20,6 +23,8 @@ public class Alumno implements IAuditable{
     @Column(name = "alu_per_id")
     private Long aluId;
 
+    // La persona se audita aparte (PERSONAS_AUD); el id del alumno ya es el de la persona
+    @NotAudited
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "alu_per_id")
@@ -40,12 +45,17 @@ public class Alumno implements IAuditable{
     @Column(name = "alu_problema_salud", length = 500)
     private String aluProblemaSalud;
 
+    // Los campos de auditoría propios no se versionan: guardar sin cambios reales no genera revisión
+    @NotAudited
     @Column(name = "AUD_USR_INS", nullable = false, length = 250)
     private String audUsrIns;
+    @NotAudited
     @Column(name = "AUD_USR_UPD", nullable = false, length = 250)
     private String audUsrUpd;
+    @NotAudited
     @Column(name = "AUD_FECHA_INS", nullable = false, length = 7)
     private LocalDateTime audFechaIns;
+    @NotAudited
     @Column(name = "AUD_FECHA_UPD", nullable = false, length = 7)
     private LocalDateTime audFechaUpd;
 }
