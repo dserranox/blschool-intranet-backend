@@ -5,6 +5,7 @@ import ar.com.blschool.entity.*;
 import ar.com.blschool.repository.AlumnoRepository;
 import ar.com.blschool.repository.ComisionRepository;
 import ar.com.blschool.repository.InscripcionRepository;
+import ar.com.blschool.repository.LogroRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -22,13 +23,33 @@ public class CalificacionSoporte {
     private final ComisionRepository comisionRepository;
     private final InscripcionRepository inscripcionRepository;
     private final AlumnoRepository alumnoRepository;
+    private final LogroRepository logroRepository;
 
     public CalificacionSoporte(ComisionRepository comisionRepository,
                                InscripcionRepository inscripcionRepository,
-                               AlumnoRepository alumnoRepository) {
+                               AlumnoRepository alumnoRepository,
+                               LogroRepository logroRepository) {
         this.comisionRepository = comisionRepository;
         this.inscripcionRepository = inscripcionRepository;
         this.alumnoRepository = alumnoRepository;
+        this.logroRepository = logroRepository;
+    }
+
+    /** Copia congelada de los logros del curso en la evaluación. 409 si el curso no tiene logros configurados. */
+    public void copiarLogrosDelCurso(Evaluacion evaluacion) {
+        Curso curso = evaluacion.getComision().getCurso();
+        List<Logro> logrosCurso = logroRepository.findByCursoCurIdOrderByLogOrdenAsc(curso.getCurId());
+        if (logrosCurso.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Configurá los logros de " + curso.getCurNombre() + " primero");
+        }
+        for (Logro logro : logrosCurso) {
+            EvaluacionLogro copia = new EvaluacionLogro();
+            copia.setEvaluacion(evaluacion);
+            copia.setEloNombre(logro.getLogNombre());
+            copia.setEloPeso(logro.getLogPeso());
+            copia.setEloOrden(logro.getLogOrden());
+            evaluacion.getLogros().add(copia);
+        }
     }
 
     public Comision buscarComision(Long comisionId) {

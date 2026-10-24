@@ -16,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/** Pruebas de una comisión: las crea la docente; nota única 0-100; no ponderan. */
+/** Pruebas de una comisión: las crea la docente; nota única 0-100 (Year/First: por logros, ver EvaluacionLogrosService); no ponderan. */
 @Service
 public class PruebaService extends BaseService {
 
@@ -47,6 +47,9 @@ public class PruebaService extends BaseService {
         Evaluacion prueba = new Evaluacion();
         prueba.setComision(soporte.buscarComision(comisionId));
         prueba.setEvaTipo(Evaluacion.PRUEBA);
+        if (porLogros(prueba.getComision())) {
+            soporte.copiarLogrosDelCurso(prueba);
+        }
         aplicarDatos(prueba, datos);
         auditar(prueba, soporte.usuarioActual());
         return new PruebaDTO(evaluacionRepository.save(prueba));
@@ -71,6 +74,10 @@ public class PruebaService extends BaseService {
     public PlanillaPruebasDTO guardarNotas(Long comisionId, List<GuardarNotaPruebaDTO> notas) {
         permisos.verificarComision(comisionId);
         Comision comision = soporte.buscarComision(comisionId);
+        if (porLogros(comision)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "En " + comision.getCurso().getCurNombre() + " cada prueba se carga desde su planilla de logros");
+        }
         Map<Long, Evaluacion> pruebas = evaluacionRepository
                 .findByComisionComIdAndEvaTipoOrderByEvaFechaAscEvaIdAsc(comisionId, Evaluacion.PRUEBA).stream()
                 .collect(Collectors.toMap(Evaluacion::getEvaId, p -> p));
@@ -110,6 +117,10 @@ public class PruebaService extends BaseService {
             calificacionRepository.save(calificacion);
         }
         return armarPlanilla(comision);
+    }
+
+    private boolean porLogros(Comision comision) {
+        return CalificacionReglas.pruebasPorLogros(comision.getCurso().getCurNombre());
     }
 
     private Evaluacion buscarPrueba(Long pruebaId) {
@@ -154,6 +165,7 @@ public class PruebaService extends BaseService {
         dto.setComision(comision.getComNombre());
         dto.setCurso(comision.getCurso().getCurNombre());
         dto.setAnio(comision.getComAnio());
+        dto.setPorLogros(porLogros(comision));
         dto.setPruebas(pruebas.stream().map(PruebaDTO::new).toList());
         dto.setAlumnos(soporte.alumnosDePlanilla(comision.getComId(), notasPorAlumno.keySet()).stream()
                 .map(alumno -> {

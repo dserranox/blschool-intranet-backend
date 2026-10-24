@@ -98,4 +98,30 @@ class CalificacionReglasTest {
         assertThat(redondear(bd("22.225"))).isEqualByComparingTo("22.23");
         assertThat(redondear(null)).isNull();
     }
+
+    @Test
+    void pruebasPorLogrosSoloEnYearYFirst() {
+        assertThat(pruebasPorLogros("Year 1")).isTrue();
+        assertThat(pruebasPorLogros("FIRST Certificate")).isTrue();
+        assertThat(pruebasPorLogros("Kids 2")).isFalse();
+        assertThat(pruebasPorLogros(null)).isFalse();
+    }
+
+    @Test
+    void finalMarkManualEsExcluyenteConLosLogros() {
+        assertThatCode(() -> validarNotaManual("Pérez, Ana", bd("80"), false)).doesNotThrowAnyException();
+        assertThatCode(() -> validarNotaManual("Pérez, Ana", null, true)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> validarNotaManual("Pérez, Ana", bd("80"), true))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("no ambos");
+    }
+
+    @Test
+    void finalMarkManualFueraDeRangoEsRechazado() {
+        assertThatThrownBy(() -> validarNotaManual("Pérez, Ana", bd("100.01"), false))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("entre 0 y 100");
+        assertThatThrownBy(() -> validarNotaManual("Pérez, Ana", bd("-1"), false))
+                .isInstanceOf(ResponseStatusException.class);
+    }
 }

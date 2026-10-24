@@ -88,6 +88,25 @@ public final class CalificacionReglas {
         return redondear(total);
     }
 
+    /** Cursos Year / First: sus pruebas se califican por logros (o con Final Mark manual), como Parcial/Final. */
+    public static boolean pruebasPorLogros(String nombreCurso) {
+        String nombre = nombreCurso == null ? "" : nombreCurso.toLowerCase();
+        return nombre.contains("year") || nombre.contains("first");
+    }
+
+    /** Final Mark manual: excluyente con los aportes por logro; entre 0 y 100. null = no se cargó a mano. */
+    public static void validarNotaManual(String alumno, BigDecimal notaManual, boolean hayAportes) {
+        if (notaManual == null) {
+            return;
+        }
+        if (hayAportes) {
+            throw error(alumno + ": cargá el Final Mark a mano o los logros, no ambos");
+        }
+        if (notaManual.compareTo(BigDecimal.ZERO) < 0 || redondear(notaManual).compareTo(CIEN) > 0) {
+            throw error(alumno + ": el Final Mark debe estar entre 0 y 100");
+        }
+    }
+
     /** Etapa sugerida para una prueba: enero-julio = 1, agosto-diciembre = 2. */
     public static int etapaPorFecha(LocalDate fecha) {
         return fecha.getMonthValue() <= 7 ? 1 : 2;

@@ -1,5 +1,5 @@
 # ---- build stage ----
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /workspace
 
 # 1) Compilar e instalar common-security
@@ -18,9 +18,9 @@ RUN --mount=type=cache,target=/root/.m2 \
     mvn -f blschool-intranet-backend/pom.xml -DskipTests package
 
 # ---- runtime stage ----
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 ENV TZ=America/Argentina/Cordoba \
-    JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Duser.timezone=America/Argentina/Cordoba"
+    JAVA_OPTS="-XX:+UseCompactObjectHeaders -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Duser.timezone=America/Argentina/Cordoba"
 
 WORKDIR /opt/app
 COPY --from=build /workspace/blschool-intranet-backend/target/*.jar /opt/app/app.jar

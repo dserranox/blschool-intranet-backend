@@ -7,7 +7,6 @@ import ar.com.blschool.dto.PlanillaLogrosDTO;
 import ar.com.blschool.entity.*;
 import ar.com.blschool.repository.CalificacionRepository;
 import ar.com.blschool.repository.EvaluacionRepository;
-import ar.com.blschool.repository.LogroRepository;
 import ar.com.blschool.util.CalificacionReglas;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,24 +17,24 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/** Planilla de Parcial / Final de una comisión (calificación por logros). */
+/**
+ * Planillas calificadas por logros: Parcial / Final de una comisión y, en los cursos Year/First,
+ * cada prueba (que además admite Final Mark cargado a mano, excluyente con los logros).
+ */
 @Service
 public class EvaluacionLogrosService extends BaseService {
 
     private final EvaluacionRepository evaluacionRepository;
     private final CalificacionRepository calificacionRepository;
-    private final LogroRepository logroRepository;
     private final PermisoCalificacionService permisos;
     private final CalificacionSoporte soporte;
 
     public EvaluacionLogrosService(EvaluacionRepository evaluacionRepository,
                                    CalificacionRepository calificacionRepository,
-                                   LogroRepository logroRepository,
                                    PermisoCalificacionService permisos,
                                    CalificacionSoporte soporte) {
         this.evaluacionRepository = evaluacionRepository;
         this.calificacionRepository = calificacionRepository;
-        this.logroRepository = logroRepository;
         this.permisos = permisos;
         this.soporte = soporte;
     }
@@ -60,9 +59,40 @@ public class EvaluacionLogrosService extends BaseService {
         Evaluacion evaluacion = evaluacionRepository.findByComisionComIdAndEvaTipo(comisionId, tipoEvaluacion)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "La evaluación no existe: abrí la planilla primero"));
+        guardarFilas(evaluacion, filas);
+        return armarPlanilla(comision, evaluacion);
+    }
+
+    /**
+     * Planilla de una prueba de Year/First. Las pruebas creadas antes de este esquema no tienen logros:
+     * se les copian los del curso al abrirlas y sus notas existentes quedan como Final Mark manual.
+     */
+    @Transactional
+    public PlanillaLogrosDTO obtenerPlanillaPrueba(Long pruebaId) {
+        Evaluacion prueba = buscarPruebaPorLogros(pruebaId);
+        if (prueba.getLogros().isEmpty()) {
+            soporte.copiarLogrosDelCurso(prueba);
+            auditar(prueba, soporte.usuarioActual());
+            prueba = evaluacionRepository.save(prueba);
+        }
+        return armarPlanilla(prueba.getComision(), prueba);
+    }
+
+    @Transactional
+    public PlanillaLogrosDTO guardarPlanillaPrueba(Long pruebaId, List<GuardarFilaLogrosDTO> filas) {
+        Evaluacion prueba = buscarPruebaPorLogros(pruebaId);
+        if (prueba.getLogros().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La prueba no tiene logros: abrí la planilla primero");
+        }
+        guardarFilas(prueba, filas);
+        return armarPlanilla(prueba.getComision(), prueba);
+    }
+
+    private void guardarFilas(Evaluacion evaluacion, List<GuardarFilaLogrosDTO> filas) {
+        boolean admiteNotaManual = admiteNotaManual(evaluacion);
         Map<Long, EvaluacionLogro> logros = evaluacion.getLogros().stream()
                 .collect(Collectors.toMap(EvaluacionLogro::getEloId, l -> l));
-        Map<Long, Alumno> inscriptos = soporte.alumnosInscriptos(comisionId);
+        Map<Long, Alumno> inscriptos = soporte.alumnosInscriptos(evaluacion.getComision().getComId());
         String username = soporte.usuarioActual();
 
         for (GuardarFilaLogrosDTO fila : filas) {
@@ -70,15 +100,21 @@ public class EvaluacionLogrosService extends BaseService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Fila vacía en la planilla");
             }
             Alumno alumno = soporte.alumnoEditable(inscriptos, fila.getAlumnoId());
+            String nombreAlumno = soporte.nombre(alumno);
             boolean ausente = Boolean.TRUE.equals(fila.getAusente());
+            BigDecimal notaManual = ausente ? null : fila.getNota();
+            if (notaManual != null && !admiteNotaManual) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta evaluación no admite Final Mark manual");
+            }
             Map<Long, BigDecimal> valores = ausente
                     ? new HashMap<>()
-                    : valoresValidados(fila, logros, soporte.nombre(alumno));
+                    : valoresValidados(fila, logros, nombreAlumno);
+            CalificacionReglas.validarNotaManual(nombreAlumno, notaManual, !valores.isEmpty());
             Calificacion calificacion = calificacionRepository
                     .findByEvaluacionEvaIdAndAlumnoAluId(evaluacion.getEvaId(), alumno.getAluId())
                     .orElse(null);
 
-            if (!ausente && valores.isEmpty()) {
+            if (!ausente && valores.isEmpty() && notaManual == null) {
                 // Fila vacía = sin cargar
                 if (calificacion != null) {
                     calificacionRepository.delete(calificacion);
@@ -92,6 +128,9 @@ public class EvaluacionLogrosService extends BaseService {
             if (ausente) {
                 calificacion.getValores().clear();
                 calificacion.setCalNota(null);
+            } else if (notaManual != null) {
+                calificacion.getValores().clear();
+                calificacion.setCalNota(CalificacionReglas.redondear(notaManual));
             } else {
                 sincronizarValores(calificacion, valores, logros);
                 calificacion.setCalNota(CalificacionReglas.calcularNota(logros.keySet(), valores));
@@ -99,7 +138,6 @@ public class EvaluacionLogrosService extends BaseService {
             auditar(calificacion, username);
             calificacionRepository.save(calificacion);
         }
-        return armarPlanilla(comision, evaluacion);
     }
 
     private String validarTipo(String tipo) {
@@ -110,24 +148,30 @@ public class EvaluacionLogrosService extends BaseService {
         return valor;
     }
 
-    private Evaluacion crearEvaluacion(Comision comision, String tipo) {
-        List<Logro> logrosCurso = logroRepository.findByCursoCurIdOrderByLogOrdenAsc(comision.getCurso().getCurId());
-        if (logrosCurso.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Configurá los logros de " + comision.getCurso().getCurNombre() + " primero");
+    /** Prueba de un curso Year/First a la que el usuario tiene acceso. */
+    private Evaluacion buscarPruebaPorLogros(Long pruebaId) {
+        Evaluacion prueba = evaluacionRepository.findById(pruebaId)
+                .filter(e -> Evaluacion.PRUEBA.equals(e.getEvaTipo()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Prueba no encontrada con id: " + pruebaId));
+        permisos.verificarComision(prueba.getComision().getComId());
+        if (!admiteNotaManual(prueba)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Las pruebas de este curso no se califican por logros");
         }
+        return prueba;
+    }
+
+    /** Sólo las pruebas de Year/First admiten Final Mark manual; Parcial/Final siempre son suma de logros. */
+    private boolean admiteNotaManual(Evaluacion evaluacion) {
+        return Evaluacion.PRUEBA.equals(evaluacion.getEvaTipo())
+                && CalificacionReglas.pruebasPorLogros(evaluacion.getComision().getCurso().getCurNombre());
+    }
+
+    private Evaluacion crearEvaluacion(Comision comision, String tipo) {
         Evaluacion evaluacion = new Evaluacion();
         evaluacion.setComision(comision);
         evaluacion.setEvaTipo(tipo);
         evaluacion.setEvaNombre(Evaluacion.PARCIAL.equals(tipo) ? "Parcial" : "Final");
-        for (Logro logro : logrosCurso) {
-            EvaluacionLogro copia = new EvaluacionLogro();
-            copia.setEvaluacion(evaluacion);
-            copia.setEloNombre(logro.getLogNombre());
-            copia.setEloPeso(logro.getLogPeso());
-            copia.setEloOrden(logro.getLogOrden());
-            evaluacion.getLogros().add(copia);
-        }
+        soporte.copiarLogrosDelCurso(evaluacion);
         auditar(evaluacion, soporte.usuarioActual());
         return evaluacionRepository.save(evaluacion);
     }
@@ -174,6 +218,8 @@ public class EvaluacionLogrosService extends BaseService {
         PlanillaLogrosDTO dto = new PlanillaLogrosDTO();
         dto.setEvaluacionId(evaluacion.getEvaId());
         dto.setTipo(evaluacion.getEvaTipo());
+        dto.setNombre(evaluacion.getEvaNombre());
+        dto.setNotaManual(admiteNotaManual(evaluacion));
         dto.setComisionId(comision.getComId());
         dto.setComision(comision.getComNombre());
         dto.setCurso(comision.getCurso().getCurNombre());

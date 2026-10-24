@@ -88,6 +88,17 @@ public class CalificacionController {
         pruebaService.eliminar(pruebaId);
     }
 
+    /** Planilla por logros de una prueba (sólo cursos Year/First). */
+    @GetMapping("/pruebas/{pruebaId}/logros")
+    public PlanillaLogrosDTO planillaLogrosPrueba(@PathVariable Long pruebaId) {
+        return evaluacionLogrosService.obtenerPlanillaPrueba(pruebaId);
+    }
+
+    @PutMapping("/pruebas/{pruebaId}/logros")
+    public PlanillaLogrosDTO guardarLogrosPrueba(@PathVariable Long pruebaId, @RequestBody List<GuardarFilaLogrosDTO> filas) {
+        return evaluacionLogrosService.guardarPlanillaPrueba(pruebaId, filas);
+    }
+
     /** tipo: PARCIAL | FINAL ("pruebas" lo toma el mapeo literal de arriba). */
     @GetMapping("/comision/{comisionId}/{tipo}")
     public PlanillaLogrosDTO planillaLogros(@PathVariable Long comisionId, @PathVariable String tipo) {

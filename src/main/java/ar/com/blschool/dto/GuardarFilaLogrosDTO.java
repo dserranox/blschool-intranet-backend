@@ -14,4 +14,6 @@ public class GuardarFilaLogrosDTO {
     private Boolean ausente;
     /** id de logro de la evaluación -> aporte (null = sin cargar) */
     private Map<Long, BigDecimal> valores;
+    /** Final Mark cargado a mano (sólo pruebas de Year/First); excluyente con valores */
+    private BigDecimal nota;
 }

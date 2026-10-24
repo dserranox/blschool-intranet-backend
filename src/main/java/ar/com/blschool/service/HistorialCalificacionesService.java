@@ -46,18 +46,26 @@ public class HistorialCalificacionesService {
                 case Evaluacion.FINAL -> grupo.setFinalAnual(resultado(calificacion));
                 default -> grupo.getPruebas().add(new ResultadoPruebaDTO(
                         evaluacion.getEvaNombre(), evaluacion.getEvaFecha(), evaluacion.getEvaEtapa(),
-                        calificacion.getCalNota(), calificacion.getCalAusente()));
+                        calificacion.getCalNota(), calificacion.getCalAusente(), aportes(calificacion)));
             }
         }
         return new ArrayList<>(porComision.values());
     }
 
     private ResultadoEvaluacionDTO resultado(Calificacion calificacion) {
+        return new ResultadoEvaluacionDTO(calificacion.getCalNota(), calificacion.getCalAusente(), logros(calificacion));
+    }
+
+    /** Pruebas: detalle por logro sólo si se cargó por logros (nota única o Final Mark manual -> vacío). */
+    private List<ResultadoLogroDTO> aportes(Calificacion calificacion) {
+        return calificacion.getValores().isEmpty() ? List.of() : logros(calificacion);
+    }
+
+    private List<ResultadoLogroDTO> logros(Calificacion calificacion) {
         Map<Long, BigDecimal> valores = calificacion.getValores().stream()
                 .collect(Collectors.toMap(v -> v.getEvaluacionLogro().getEloId(), CalificacionLogro::getCloValor));
-        List<ResultadoLogroDTO> logros = calificacion.getEvaluacion().getLogros().stream()
+        return calificacion.getEvaluacion().getLogros().stream()
                 .map(l -> new ResultadoLogroDTO(l.getEloNombre(), l.getEloPeso(), valores.get(l.getEloId())))
                 .toList();
-        return new ResultadoEvaluacionDTO(calificacion.getCalNota(), calificacion.getCalAusente(), logros);
     }
 }

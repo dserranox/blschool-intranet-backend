@@ -13,6 +13,8 @@ public class PlanillaPruebasDTO {
     private String comision;
     private String curso;
     private Integer anio;
+    /** Year/First: cada prueba se carga en su propia planilla de logros */
+    private Boolean porLogros;
     private List<PruebaDTO> pruebas;
     private List<FilaPruebasDTO> alumnos;
 }
